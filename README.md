@@ -1,2 +1,2 @@
-# tag-parser
-Advanced golang tag parser
+# tag-scanner
+Advanced golang tag scanner
