@@ -106,6 +106,7 @@ func (this Scanner) ScanAll(s string, cb func(node Node)) {
 }
 
 func (this Scanner) IsTags(value string) bool {
+	value = strings.TrimSpace(value)
 	if value == "" {
 		return false
 	}
@@ -114,7 +115,11 @@ func (this Scanner) IsTags(value string) bool {
 
 func (this Scanner) String(value string) string {
 	if this.IsTags(value) {
-		return value[1 : len(value)-1]
+		return strings.ReplaceAll(value[1 : len(value)-1], `\"`, `"`)
 	}
 	return value
+}
+
+func (this Scanner) ToTags(value string) string {
+	return string(this.Start) + value + string(this.End)
 }
