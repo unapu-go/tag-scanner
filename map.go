@@ -3,10 +3,10 @@ package tag_scanner
 import "strings"
 
 const (
-	PreserveKeys ParseFlag = 1 << iota
-	ForceTags
+	FlagPreserveKeys ParseFlag = 1 << iota
+	FlagForceTags
 	FlagTags
-	NotNil
+	FlagNotNil
 )
 
 type ParseFlag uint8
@@ -54,11 +54,30 @@ func (this Map) Get(key string) (v string) {
 	return
 }
 
+func (this Map) GetAny(key ...string) (v string) {
+	for _, key := range key {
+		if this != nil {
+			v = this[key]
+		}
+	}
+	return
+}
+
 func (this Map) GetOk(key string) (v string, ok bool) {
 	if this == nil {
 		return
 	}
 	v, ok = this[key]
+	return
+}
+
+func (this Map) GetAnyOk(key ...string) (v string, ok bool) {
+	if this == nil {
+		return
+	}
+	for _, key := range key {
+		v, ok = this[key]
+	}
 	return
 }
 
@@ -68,6 +87,18 @@ func (this Map) GetString(key string) (v string) {
 	}
 	if v, ok := this[key]; ok {
 		return Default.String(v)
+	}
+	return
+}
+
+func (this Map) GetAnyString(key ...string) (v string) {
+	if this == nil {
+		return
+	}
+	for _, key := range key {
+		if v, ok := this[key]; ok {
+			return Default.String(v)
+		}
 	}
 	return
 }
@@ -144,15 +175,18 @@ func (this Map) GetTags(name string, flags ...ParseFlag) (tags Map) {
 	flag := JoinParseFlags(flags...)
 	if s := this[name]; s != "" {
 		if !this.Scanner().IsTags(s) {
-			if !flag.Has(ForceTags) {
+			if !flag.Has(FlagForceTags) {
 				return
+			}
+			if s == name {
+				s = ""
 			}
 			s = this.Scanner().ToTags(s)
 		}
 
 		tags = make(Map)
 		tags.ParseString(s, flag)
-	} else if flag.Has(NotNil) {
+	} else if flag.Has(FlagNotNil) {
 		return Map{}
 	}
 	return
@@ -181,11 +215,11 @@ func (this *Map) Parse(tags StructTag, key string, flag ParseFlag, keyAlias ...s
 	return this.ParseCallback(tags, append([]string{key}, keyAlias...), flag)
 }
 
-func (this *Map) ParseCallbackDefault(tags StructTag, keys []string, cb ...func(dest map[string]string, n Node)) (ok bool) {
+func (this *Map) ParseCallbackDefault(tags StructTag, keys []string, cb ...func(dest Map, n Node)) (ok bool) {
 	return this.ParseCallback(tags, keys, 0, cb...)
 }
 
-func (this *Map) ParseCallback(tags StructTag, keys []string, flag ParseFlag, cb ...func(dest map[string]string, n Node)) (ok bool) {
+func (this *Map) ParseCallback(tags StructTag, keys []string, flag ParseFlag, cb ...func(dest Map, n Node)) (ok bool) {
 	if *this == nil {
 		*this = make(Map)
 	}
@@ -203,11 +237,11 @@ func (this *Map) Scanner() Scanner {
 	return Default
 }
 
-func (this *Map) ParseStringDefault(s string, cb ...func(dest map[string]string, n Node)) {
+func (this *Map) ParseStringDefault(s string, cb ...func(dest Map, n Node)) {
 	this.ParseString(s, 0, cb...)
 }
 
-func (this *Map) ParseString(s string, flags ParseFlag, cb ...func(dest map[string]string, n Node)) {
+func (this *Map) ParseString(s string, flags ParseFlag, cb ...func(dest Map, n Node)) {
 	if *this == nil {
 		*this = map[string]string{}
 	}
@@ -225,13 +259,13 @@ func (this *Map) ParseString(s string, flags ParseFlag, cb ...func(dest map[stri
 		case KeyValue:
 			kv := node.(NodeKeyValue)
 			key := kv.Key
-			if !flags.Has(PreserveKeys) {
+			if !flags.Has(FlagPreserveKeys) {
 				key = strings.ToUpper(key)
 			}
 			(*this)[key] = kv.Value
 		case Flag:
 			name := node.String()
-			if !flags.Has(PreserveKeys) {
+			if !flags.Has(FlagPreserveKeys) {
 				name = strings.ToUpper(name)
 			}
 			(*this)[name] = name

@@ -47,7 +47,7 @@ start:
 }
 
 func (this Scanner) Scan(s string) (key, value, news string, keyArgs []string) {
-	s = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), string(this.Fields)))
+	s = strings.TrimPrefix(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), string(this.Fields))), string(this.Fields))
 	if s == "" {
 		return
 	}
@@ -84,6 +84,9 @@ func (this Scanner) ScanAll(s string, cb func(node Node)) {
 			return
 		}
 	}
+	if s = strings.TrimPrefix(s, string(this.Fields)); s == "" {
+		return
+	}
 
 	var (
 		key, value string
@@ -102,7 +105,33 @@ func (this Scanner) ScanAll(s string, cb func(node Node)) {
 		} else if value != "" {
 			cb(NodeTags(value))
 		}
+		s = strings.Trim(s, string(this.Fields))
 	}
+}
+
+func (this Scanner) ScanAllFlags(s string, flags ParseFlag, cb func(flag bool, key string, value string)) {
+	this.ScanAll(s, func(node Node) {
+		switch node.Type() {
+		case Tags:
+			if flags.Has(FlagTags) {
+				n := node.(NodeTags)
+				cb(false, n.Value(), n.Value())
+			}
+		case KeyValue:
+			kv := node.(NodeKeyValue)
+			key := kv.Key
+			if !flags.Has(FlagPreserveKeys) {
+				key = strings.ToUpper(key)
+			}
+			cb(false, key, kv.Value)
+		case Flag:
+			name := node.String()
+			if !flags.Has(FlagPreserveKeys) {
+				name = strings.ToUpper(name)
+			}
+			cb(true, name, "")
+		}
+	})
 }
 
 func (this Scanner) IsTags(value string) bool {
@@ -115,7 +144,7 @@ func (this Scanner) IsTags(value string) bool {
 
 func (this Scanner) String(value string) string {
 	if this.IsTags(value) {
-		return strings.ReplaceAll(value[1 : len(value)-1], `\"`, `"`)
+		return strings.ReplaceAll(value[1:len(value)-1], `\"`, `"`)
 	}
 	return value
 }

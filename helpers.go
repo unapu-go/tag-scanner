@@ -50,3 +50,14 @@ func NonFlags(s Scanner, v string) (names []string) {
 	})
 	return
 }
+
+func Parse(s Scanner, v string, flag ...ParseFlag) (tags Map, flags Set) {
+	s.ScanAllFlags(v, JoinParseFlags(flag...), func(flag bool, key string, value string) {
+		if flag {
+			flags.Add(key)
+		} else {
+			tags.Set(key, value)
+		}
+	})
+	return
+}
